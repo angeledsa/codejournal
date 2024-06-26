@@ -21,11 +21,12 @@
 >>     pip install -r requirements.txt
 >>     ```
 >> 
->> 4. Set environment variables for GitHub and Jira credentials:
+>> 4. Set environment variables for GitHub, Jira, and OpenAI credentials:
 >>     ```bash
 >>     export GITHUB_TOKEN=<your-github-token>
 >>     export JIRA_USER=<your-jira-user>
 >>     export JIRA_API_TOKEN=<your-jira-api-token>
+>>     export OPENAI_API_KEY=<your-openai-api-key>
 >>     ```
 >> 
 >> 5. Run the application:
