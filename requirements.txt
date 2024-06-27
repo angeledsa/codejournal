@@ -1,4 +1,4 @@
 Flask
 requests
 atlassian-python-api
-openai
+openai>=1.0.0
