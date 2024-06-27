@@ -1,6 +1,12 @@
 def match_stories_to_code(code_explanations, user_stories):
-    validation_results = []
+    matched_stories = {}
     for story in user_stories:
-        matched = any(story['description'] in explanation for explanation in code_explanations.values())
-        validation_results.append((story['key'], matched))
-    return validation_results
+        story_key = story['key']
+        story_summary = story['fields']['summary']
+        story_description = story['fields'].get('description', 'No description provided')
+        matched_stories[story_key] = {
+            'summary': story_summary,
+            'description': story_description,
+            # other fields
+        }
+    return matched_stories
