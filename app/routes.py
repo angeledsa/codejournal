@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from .github_integration import fetch_github_repo_contents
 from .jira_integration import fetch_jira_user_stories
-from .code_analysis import parse_codebase, understand_code
+from .code_analysis import parse_codebase, understand_code, extract_readme_context
 from .story_validation import match_stories_to_code
 from .documentation_generation import generate_documentation
 import logging
@@ -27,8 +27,11 @@ def summarize_repo():
     
     code_explanations = {path: understand_code(code) for path, code in codebase.items()}
     logger.debug("Code explanations: %s", code_explanations)
+    
+    readme_context = extract_readme_context(repo_data)
+    logger.debug("README.md context: %s", readme_context)
 
-    return jsonify({'code_explanations': code_explanations})
+    return jsonify({'code_explanations': code_explanations, 'readme_context': readme_context})
 
 @bp.route('/summarize_jira', methods=['POST'])
 def summarize_jira():
