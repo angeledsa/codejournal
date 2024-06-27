@@ -1,50 +1,76 @@
 from flask import Blueprint, request, jsonify
-import os
-import requests
-from .github_integration import fetch_github_repo
+from .github_integration import fetch_github_repo_contents
 from .jira_integration import fetch_jira_user_stories
-from .code_analysis import parse_codebase, analyze_code_with_openai
+from .code_analysis import parse_codebase, understand_code
 from .story_validation import match_stories_to_code
 from .documentation_generation import generate_documentation
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 bp = Blueprint('main', __name__)
 
-@bp.route('/validate', methods=['POST'])
-def validate_code():
-    try:
-        data = request.get_json()
-        
-        repo_url = data['repo_url'].replace('https://github.com/', 'https://api.github.com/repos/')
-        jira_project_key = data['jira_project_key']
-        
-        # Fetch and analyze code
-        repo = fetch_github_repo(repo_url)
-        codebase = parse_codebase(repo)
-        
-        # Analyze code with OpenAI
-        code_explanations = analyze_code_with_openai(codebase)
-        
-        # Fetch and validate user stories
-        jira_url = os.getenv('JIRA_URL')
-        jira_user = os.getenv('JIRA_USER')
-        jira_api_token = os.getenv('JIRA_API_TOKEN')
-        user_stories = fetch_jira_user_stories(jira_url, jira_project_key, jira_user, jira_api_token)
-        
-        # Match stories to code
-        validation_results = match_stories_to_code(code_explanations, user_stories)
-        
-        # Generate structured documentation
-        documentation = generate_documentation(validation_results, user_stories)
-        
-        return jsonify({'documentation': documentation})
+@bp.route('/summarize_repo', methods=['POST'])
+def summarize_repo():
+    repo_url = request.json['repo_url']
+    owner, repo = repo_url.strip('/').split('/')[-2:]
+    logger.debug("Received request to summarize repo: %s", repo_url)
 
-    except requests.exceptions.HTTPError as http_err:
-        if http_err.response.status_code == 401:
-            return jsonify({'error': 'Unauthorized access. Please check your GitHub or Jira token.'}), 401
-        return jsonify({'error': f'HTTP error occurred: {http_err}'}), 500
-    except requests.exceptions.JSONDecodeError as json_err:
-        return jsonify({'error': f'Error parsing JSON: {json_err}'}), 500
-    except KeyError as key_err:
-        return jsonify({'error': f'Missing key in request data: {key_err}'}), 400
-    except Exception as err:
-        return jsonify({'error': f'An error occurred: {err}'}), 500
+    # Fetch and analyze code
+    repo_data = fetch_github_repo_contents(owner, repo)
+    logger.debug("Fetched repo data: %s", repo_data)
+    
+    codebase = parse_codebase(repo_data)
+    logger.debug("Parsed codebase: %s", codebase)
+    
+    code_explanations = {path: understand_code(code) for path, code in codebase.items()}
+    logger.debug("Code explanations: %s", code_explanations)
+
+    return jsonify({'code_explanations': code_explanations})
+
+@bp.route('/summarize_jira', methods=['POST'])
+def summarize_jira():
+    jira_url = request.json['jira_url']
+    jira_project_key = request.json['jira_project_key']
+    jira_user = request.json['jira_user']
+    jira_api_token = request.json['jira_api_token']
+    logger.debug("Received request to summarize JIRA project: %s", jira_project_key)
+
+    # Fetch user stories
+    user_stories = fetch_jira_user_stories(jira_url, jira_project_key, jira_user, jira_api_token)
+    logger.debug("Fetched user stories: %s", user_stories)
+
+    return jsonify({'user_stories': user_stories})
+
+@bp.route('/compare_repo_jira', methods=['POST'])
+def compare_repo_jira():
+    repo_url = request.json['repo_url']
+    jira_url = request.json['jira_url']
+    jira_project_key = request.json['jira_project_key']
+    github_token = request.json['github_token']
+    jira_user = request.json['jira_user']
+    jira_api_token = request.json['jira_api_token']
+    owner, repo = repo_url.strip('/').split('/')[-2:]
+    logger.debug("Received request to compare repo with JIRA project: %s", jira_project_key)
+
+    # Fetch and analyze code
+    repo_data = fetch_github_repo_contents(owner, repo)
+    logger.debug("Fetched repo data: %s", repo_data)
+    
+    codebase = parse_codebase(repo_data)
+    logger.debug("Parsed codebase: %s", codebase)
+    
+    code_explanations = {path: understand_code(code) for path, code in codebase.items()}
+    logger.debug("Code explanations: %s", code_explanations)
+
+    # Fetch user stories
+    user_stories = fetch_jira_user_stories(jira_url, jira_project_key, jira_user, jira_api_token)
+    logger.debug("Fetched user stories: %s", user_stories)
+
+    # Validate stories against code
+    validation_results = match_stories_to_code(code_explanations, user_stories)
+    logger.debug("Validation results: %s", validation_results)
+
+    return jsonify({'validation_results': validation_results})

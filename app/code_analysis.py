@@ -1,31 +1,30 @@
-import openai
 import os
+import openai
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Set the OpenAI API key
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 def parse_codebase(repo_data):
-    if not isinstance(repo_data, dict):
-        raise ValueError("Expected dictionary input for repo_data")
-    
-    codebase = {}
-    for file_info in repo_data.get('files', []):
-        path = file_info.get('path')
-        content = file_info.get('content')
-        if path and content:
-            codebase[path] = content
-    
-    return codebase
+    code_structure = {}
+    logger.debug("Parsing codebase...")
+    # Assuming `repo_data` is a dictionary containing file paths as keys and file contents as values
+    for file_path, file_content in repo_data.items():
+        if file_path.endswith('.py'):  # or other relevant extensions
+            logger.debug(f"Processing file: {file_path}")
+            code_structure[file_path] = file_content
+    return code_structure
 
-def analyze_code_with_openai(codebase):
-    openai.api_key = os.getenv('OPENAI_API_KEY')
-    code_explanations = {}
-    
-    for path, code in codebase.items():
-        response = openai.Completion.create(
-            engine="davinci-codex",
-            prompt=f"Analyze the following code and provide a detailed explanation:\n\n{code}",
-            max_tokens=150,
-            temperature=0.5
-        )
-        explanation = response.choices[0].text.strip()
-        code_explanations[path] = explanation
-    
-    return code_explanations
+def understand_code(code_snippet):
+    logger.debug("Calling OpenAI API to understand code...")
+    response = openai.Completion.create(
+        engine="gpt-4-turbo",
+        prompt=f"Explain what the following code does:\n\n{code_snippet}",
+        max_tokens=150
+    )
+    logger.debug(f"OpenAI API response: {response}")
+    return response.choices[0].text.strip()
