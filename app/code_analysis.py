@@ -5,26 +5,22 @@ import logging
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client with API key
+# Instantiate the OpenAI client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 def parse_codebase(repo_data):
     code_structure = {}
-    # Parse codebase logic
+    for path, content in repo_data.items():
+        logger.debug(f"Parsing content for path: {path}")
+        code_structure[path] = content  # Store raw content first
     return code_structure
 
 def understand_code(code_snippet):
     logger.debug("Calling OpenAI API to understand code...")
-    response = client.completions.create(
-        engine="gpt-4-turbo",
-        prompt=f"Explain what the following code does:\n\n{code_snippet}",
+    response = client.chat.completions.create(
+        model="gpt-4-turbo",
+        messages=[{"role": "user", "content": f"Explain what the following code does:\n\n{code_snippet}"}],
         max_tokens=150
     )
     logger.debug(f"OpenAI API response: {response}")
-    return response.choices[0].text.strip()
-
-# Example usage:
-if __name__ == "__main__":
-    test_code = "def hello_world(): print('Hello, world!')"
-    explanation = understand_code(test_code)
-    print(explanation)
+    return response.choices[0].message.content.strip()

@@ -4,55 +4,42 @@ import base64
 import logging
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-def fetch_github_repo_contents(owner, repo, path=''):
-    github_token = os.getenv('GITHUB_TOKEN')
+GITHUB_API_URL = "https://api.github.com"
+
+def fetch_github_repo_contents(owner, repo, path=""):
     headers = {
-        'Authorization': f'token {github_token}',
-        'Accept': 'application/vnd.github.v3+json'
+        "Authorization": f"token {os.getenv('GITHUB_TOKEN')}",
+        "Accept": "application/vnd.github+json"
     }
-    
-    url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
-    response = requests.get(url, headers=headers)
-    
-    logger.debug("Status Code: %s", response.status_code)
-    logger.debug("Response Text: %s", response.text)
-    
-    if response.status_code == 200:
-        try:
-            contents_data = response.json()
-            file_structure = {}
 
-            if isinstance(contents_data, list):
-                for item in contents_data:
-                    if item['type'] == 'file':
-                        file_response = requests.get(item['url'], headers=headers)
-                        if file_response.status_code == 200:
-                            file_content = base64.b64decode(file_response.json()['content']).decode('utf-8')
-                            file_structure[item['path']] = file_content
-                        else:
-                            logger.error("Failed to fetch file content for %s: %s", item['path'], file_response.text)
-                    elif item['type'] == 'dir':
-                        sub_dir_files = fetch_github_repo_contents(owner, repo, item['path'])
-                        file_structure.update(sub_dir_files)
-            else:
-                logger.error("Unexpected data structure: %s", contents_data)
-            
-            return file_structure
-        except requests.exceptions.JSONDecodeError:
-            logger.error("Failed to parse JSON:")
-            logger.error(response.text)
-            raise
-    else:
-        logger.error("Failed to fetch repository data:")
-        logger.error(response.text)
-        response.raise_for_status()
+    contents_url = f"{GITHUB_API_URL}/repos/{owner}/{repo}/contents/{path}"
+    response = requests.get(contents_url, headers=headers)
+    response.raise_for_status()
+    
+    repo_data = response.json()
+    
+    if isinstance(repo_data, list):  # It's a directory
+        file_structure = {}
+        for file_info in repo_data:
+            if file_info['type'] == 'file':
+                file_response = requests.get(file_info['url'], headers=headers)
+                if file_response.status_code == 200:
+                    file_content = base64.b64decode(file_response.json()['content']).decode('utf-8')
+                    file_structure[file_info['path']] = file_content
+                else:
+                    logger.error(f"Failed to fetch file content for {file_info['path']}")
+        return file_structure
+    else:  # It's a single file
+        if repo_data['type'] == 'file':
+            file_content = base64.b64decode(repo_data['content']).decode('utf-8')
+            return {repo_data['path']: file_content}
 
-# Example usage:
-if __name__ == "__main__":
-    owner = "angeledsa"
-    repo = "lumina"
-    repo_data = fetch_github_repo_contents(owner, repo)
-    print(repo_data)
+    return {}
+
+# Example usage
+# repo_data = fetch_github_repo_contents("owner", "repo_name")
+# parsed_codebase = parse_codebase(repo_data)
+# logger.info(f"Parsed codebase: {parsed_codebase}")
