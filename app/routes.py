@@ -1,9 +1,8 @@
+import os
 from flask import Blueprint, request, jsonify
 from .github_integration import fetch_github_repo_contents
-from .code_analysis import parse_codebase, understand_code_chunked, extract_readme_context
+from .code_analysis import parse_codebase, understand_code_chunked
 import logging
-import os
-import json
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -23,23 +22,18 @@ def summarize_repo():
     
     codebase = parse_codebase(repo_data)
     logger.debug("Parsed codebase: %s", codebase)
-    
-    # Store results in a dictionary
-    results = {}
-    for path, code in codebase.items():
-        summary = understand_code_chunked(code)
-        results[path] = summary
-        logger.debug("Code summary for %s: %s", path, summary)
-    
-    # Extract README context
-    readme_context = extract_readme_context(repo_data)
-    results['README.md'] = readme_context
-    logger.debug("README.md context: %s", readme_context)
-    
-    # Save results to a local JSON file
-    output_file = 'code_summaries.json'
-    with open(output_file, 'w') as f:
-        json.dump(results, f, indent=4)
-    logger.debug("Saved code summaries to %s", output_file)
 
-    return jsonify({'message': f"Summaries saved to {output_file}"})
+    summary_lines = []
+    for path, code in codebase.items():
+        if not path.lower().endswith("readme.md") and not path.lower().endswith(".md"):
+            logger.debug(f"Analyzing file: {path}")
+            summary = understand_code_chunked(code)
+            summary_lines.append(f"File: {path}\n{summary}\n")
+
+    output_file = 'repo_summary.txt'
+    with open(output_file, 'w') as f:
+        f.write("\n".join(summary_lines))
+
+    logger.debug("Summary written to %s", output_file)
+
+    return jsonify({'message': f'Summary written to {output_file}'})

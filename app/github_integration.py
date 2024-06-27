@@ -21,8 +21,8 @@ def fetch_github_repo_contents(owner, repo, path=""):
     
     repo_data = response.json()
     
+    file_structure = {}
     if isinstance(repo_data, list):  # It's a directory
-        file_structure = {}
         for file_info in repo_data:
             if file_info['type'] == 'file':
                 file_response = requests.get(file_info['url'], headers=headers)
@@ -31,15 +31,12 @@ def fetch_github_repo_contents(owner, repo, path=""):
                     file_structure[file_info['path']] = file_content
                 else:
                     logger.error(f"Failed to fetch file content for {file_info['path']}")
-        return file_structure
+            elif file_info['type'] == 'dir':
+                sub_files = fetch_github_repo_contents(owner, repo, file_info['path'])
+                file_structure.update(sub_files)
     else:  # It's a single file
         if repo_data['type'] == 'file':
             file_content = base64.b64decode(repo_data['content']).decode('utf-8')
-            return {repo_data['path']: file_content}
+            file_structure[repo_data['path']] = file_content
 
-    return {}
-
-# Example usage
-# repo_data = fetch_github_repo_contents("owner", "repo_name")
-# parsed_codebase = parse_codebase(repo_data)
-# logger.info(f"Parsed codebase: {parsed_codebase}")
+    return file_structure

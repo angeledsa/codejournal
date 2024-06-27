@@ -1,17 +1,12 @@
 import os
 from openai import OpenAI
 import logging
-from dotenv import load_dotenv
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Load environment variables from .env file
-load_dotenv()
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-
 # Initialize the OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 def parse_codebase(repo_data):
     code_structure = {}
@@ -29,7 +24,7 @@ def understand_code_chunked(code_snippet):
     for chunk in chunks:
         response = client.chat.completions.create(
             model="gpt-4-turbo",
-            messages=[{"role": "user", "content": f"Explain what the following code does:\n\n{chunk}"}],
+            messages=[{"role": "user", "content": f"Provide a detailed summary of each function in the following code and explain how they relate to the rest of the application:\n\n{chunk}"}],
             max_tokens=2048  # Reduced to avoid hitting token limits in the response
         )
         explanations.append(response.choices[0].message.content.strip())
