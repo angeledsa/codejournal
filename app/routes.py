@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from .github_integration import fetch_github_repo_contents
 from .code_analysis import parse_codebase, understand_code_chunked, quick_understand_code_chunked
 import logging
+import concurrent.futures
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -24,11 +25,15 @@ def summarize_repo():
     logger.debug("Parsed codebase: %s", codebase)
 
     summary_lines = []
-    for path, code in codebase.items():
-        if not path.lower().endswith("readme.md") and not path.lower().endswith(".md"):
-            logger.debug(f"Analyzing file: {path}")
-            summary = understand_code_chunked(code)
-            summary_lines.append(f"File: {path}\n{summary}\n")
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_path = {executor.submit(understand_code_chunked, code): path for path, code in codebase.items() if not path.lower().endswith("readme.md") and not path.lower().endswith(".md") and len(code) < 10000}  # Filter large files
+        for future in concurrent.futures.as_completed(future_to_path):
+            path = future_to_path[future]
+            try:
+                summary = future.result()
+                summary_lines.append(f"File: {path}\n{summary}\n")
+            except Exception as exc:
+                logger.error(f"{path} generated an exception: {exc}")
 
     output_file = 'repo_summary.txt'
     with open(output_file, 'w') as f:
@@ -53,14 +58,18 @@ def quick_summarize_repo():
 
     summary_lines = []
     file_count = 0
-    for path, code in codebase.items():
-        if file_count >= 15:
-            break
-        if not path.lower().endswith("readme.md") and not path.lower().endswith(".md"):
-            logger.debug(f"Quickly analyzing file: {path}")
-            summary = quick_understand_code_chunked(code)
-            summary_lines.append(f"File: {path}\n{summary}\n")
-            file_count += 1
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_path = {executor.submit(quick_understand_code_chunked, code): path for path, code in codebase.items() if not path.lower().endswith("readme.md") and not path.lower().endswith(".md") and len(code) < 10000}  # Filter large files
+        for future in concurrent.futures.as_completed(future_to_path):
+            path = future_to_path[future]
+            if file_count >= 15:
+                break
+            try:
+                summary = future.result()
+                summary_lines.append(f"File: {path}\n{summary}\n")
+                file_count += 1
+            except Exception as exc:
+                logger.error(f"{path} generated an exception: {exc}")
 
     output_file = 'quick_repo_summary.txt'
     with open(output_file, 'w') as f:

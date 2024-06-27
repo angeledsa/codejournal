@@ -21,22 +21,25 @@ def fetch_github_repo_contents(owner, repo, path=""):
     
     repo_data = response.json()
     
-    file_structure = {}
     if isinstance(repo_data, list):  # It's a directory
+        file_structure = {}
         for file_info in repo_data:
-            if file_info['type'] == 'file':
+            if file_info['type'] == 'file' and not is_common_dependency(file_info['path']):
                 file_response = requests.get(file_info['url'], headers=headers)
                 if file_response.status_code == 200:
                     file_content = base64.b64decode(file_response.json()['content']).decode('utf-8')
                     file_structure[file_info['path']] = file_content
                 else:
                     logger.error(f"Failed to fetch file content for {file_info['path']}")
-            elif file_info['type'] == 'dir':
-                sub_files = fetch_github_repo_contents(owner, repo, file_info['path'])
-                file_structure.update(sub_files)
+        return file_structure
     else:  # It's a single file
-        if repo_data['type'] == 'file':
+        if repo_data['type'] == 'file' and not is_common_dependency(repo_data['path']):
             file_content = base64.b64decode(repo_data['content']).decode('utf-8')
-            file_structure[repo_data['path']] = file_content
+            return {repo_data['path']: file_content}
 
-    return file_structure
+    return {}
+
+def is_common_dependency(file_path):
+    common_dirs = ['node_modules', 'vendor', 'dist', 'build', 'bin', '.git', '__pycache__']
+    common_extensions = ['.lock', '.json', '.md', '.txt', '.yaml', '.yml', '.xml']
+    return any(dir in file_path for dir in common_dirs) or file_path.endswith(tuple(common_extensions))
