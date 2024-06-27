@@ -1,41 +1,44 @@
 import os
 from openai import OpenAI
 import logging
+from dotenv import load_dotenv
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Instantiate the OpenAI client
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+# Load environment variables from .env file
+load_dotenv()
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# Initialize the OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 def parse_codebase(repo_data):
     code_structure = {}
-    for path, content in repo_data.items():
-        if path == ".gitignore":
-            continue  # Ignore .gitignore files
-        logger.debug(f"Parsing content for path: {path}")
-        code_structure[path] = content  # Store raw content first
+    for file_path, file_content in repo_data.items():
+        if not file_path.endswith('.gitignore'):
+            code_structure[file_path] = file_content
     return code_structure
 
-def understand_code(code_snippet):
-    logger.debug("Calling OpenAI API to understand code...")
-    response = client.chat.completions.create(
-        model="gpt-4-turbo",
-        messages=[{"role": "user", "content": f"Explain what the following code does:\n\n{code_snippet}"}],
-        max_tokens=8192  # Set to the maximum allowable amount
-    )
-    logger.debug(f"OpenAI API response: {response}")
-    return response.choices[0].message.content.strip()
+def understand_code_chunked(code_snippet):
+    logger.debug("Calling OpenAI API to understand code in chunks...")
+    chunk_size = 2048  # Ensure chunks are small enough to fit within max tokens limit
+    chunks = [code_snippet[i:i + chunk_size] for i in range(0, len(code_snippet), chunk_size)]
+    
+    explanations = []
+    for chunk in chunks:
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "user", "content": f"Explain what the following code does:\n\n{chunk}"}],
+            max_tokens=2048  # Reduced to avoid hitting token limits in the response
+        )
+        explanations.append(response.choices[0].message.content.strip())
+    return "\n".join(explanations)
 
 def extract_readme_context(repo_data):
-    readme_content = repo_data.get('README.md', '')
-    if readme_content:
-        logger.debug("Using README.md to understand context...")
-        context_response = client.chat.completions.create(
-            model="gpt-4-turbo",
-            messages=[{"role": "user", "content": f"Summarize the following README.md content:\n\n{readme_content}"}],
-            max_tokens=8192
-        )
-        logger.debug(f"OpenAI API response for README.md: {context_response}")
-        return context_response.choices[0].message.content.strip()
-    return "No README.md found in the repository."
+    readme_context = ""
+    for file_path, file_content in repo_data.items():
+        if file_path.lower() == "readme.md":
+            readme_context = file_content
+            break
+    return readme_context

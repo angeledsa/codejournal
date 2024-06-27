@@ -1,6 +1,13 @@
-from app import create_app
+from flask import Flask
+from app.routes import bp as main_bp
 
-app = create_app()
+def create_app():
+    app = Flask(__name__)
+    app.register_blueprint(main_bp, url_prefix='/')
+    
+    # Add any additional configuration or blueprints here
+    return app
 
 if __name__ == '__main__':
+    app = create_app()
     app.run(debug=True)
