@@ -1,4 +1,4 @@
->> # CodeJournal
+>> # CodeJournal: Compare Jira to Code Implementation
 >> 
 >> ## Overview
 >> 
