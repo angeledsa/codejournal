@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from .github_integration import fetch_github_repo_contents
-from .code_analysis import parse_codebase
+from .code_analysis import parse_codebase, quick_understand_code_chunked, fetch_jira_issues, summarize_jira_issues
 import logging
 from openai import OpenAI
 import os
@@ -62,3 +62,22 @@ def quick_summarize_repo():
     logger.debug("Quick summary written to quick_repo_summary.txt")
     return jsonify({'message': 'Quick summary completed.', 'summary_file': 'quick_repo_summary.txt'})
 
+@bp.route('/summarize_jira', methods=['POST'])
+def summarize_jira():
+    jira_url = request.json['jira_url']
+    jira_project_key = request.json['jira_project_key']
+    jira_user = request.json['jira_user']
+    jira_api_token = request.json['jira_api_token']
+    logger.debug("Received request to summarize JIRA issues")
+
+    jira_issues = fetch_jira_issues(jira_url, jira_project_key, jira_user, jira_api_token)
+    if not jira_issues:
+        return jsonify({'error': 'Failed to fetch JIRA issues.'}), 404
+
+    summaries = summarize_jira_issues(jira_issues)
+
+    with open('jira_summary.txt', 'w') as file:
+        file.write(summaries)
+
+    logger.debug("JIRA summary written to jira_summary.txt")
+    return jsonify({'message': 'JIRA summary completed.', 'summary_file': 'jira_summary.txt'})
