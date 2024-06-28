@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from .github_integration import fetch_github_repo_contents
-from .code_analysis import parse_codebase, quick_understand_code_chunked, fetch_jira_issues, summarize_jira_issues
+from .code_analysis import parse_codebase, quick_understand_code_chunked, fetch_jira_issues, summarize_jira_issues, compare_summaries
 import logging
 from openai import OpenAI
 import os
@@ -70,10 +70,12 @@ def summarize_jira():
     jira_api_token = request.json['jira_api_token']
     logger.debug("Received request to summarize JIRA issues")
 
+    # Fetch JIRA issues
     jira_issues = fetch_jira_issues(jira_url, jira_project_key, jira_user, jira_api_token)
     if not jira_issues:
         return jsonify({'error': 'Failed to fetch JIRA issues.'}), 404
 
+    # Summarize JIRA issues
     summaries = summarize_jira_issues(jira_issues)
 
     with open('jira_summary.txt', 'w') as file:
@@ -81,3 +83,17 @@ def summarize_jira():
 
     logger.debug("JIRA summary written to jira_summary.txt")
     return jsonify({'message': 'JIRA summary completed.', 'summary_file': 'jira_summary.txt'})
+
+@bp.route('/compare_summaries', methods=['POST'])
+def compare_summaries_route():
+    logger.debug("Received request to compare summaries")
+    try:
+        comparison_result = compare_summaries('jira_summary.txt', 'quick_repo_summary.txt')
+        with open('comparison_result.txt', 'w') as file:
+            file.write(comparison_result)
+
+        logger.debug("Comparison result written to comparison_result.txt")
+        return jsonify({'message': 'Comparison completed.', 'comparison_file': 'comparison_result.txt'})
+    except Exception as e:
+        logger.error(f"Error comparing summaries: {e}")
+        return jsonify({'error': str(e)}), 500

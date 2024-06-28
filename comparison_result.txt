@@ -1,0 +1,68 @@
+(Write resentment inventory)
+————————————————————————
+(Implemented)
+- **File Name**: backend/inventory.py
+- **Function Name**: create_inventory and analyze_inventory
+- **Details**: These functions manage and analyze an emotional inventory based on resentments and fears, creating and processing entries related to resentments in the system.
+
+(Write nightly inventory)
+————————————————————————
+(Implemented)
+- **File Name**: backend/daily_review.py
+- **Function Name**: nightly_review
+- **Details**: This function processes input data to create a nightly review, summarizing the day’s activities and suggesting corrective actions.
+
+(Community Features)
+————————————————————————
+(NOT IMPLEMENTED)
+- **Details**: There is no specified implementation for "Community Features" within the provided code snippets. This user story requires further details and specific functions to ascertain its implementation.
+
+(Mobile Compatibility)
+————————————————————————
+(NOT IMPLEMENTED)
+- **Details**: The repository summary does not detail any specific implementations addressing mobile compatibility, such as responsive design or mobile-specific functionalities.
+
+(AI Feedback and Step Guidance)
+————————————————————————
+(Implemented)
+- **File Name**: backend/openai_api.py and backend/steps.py
+- **Function Names**: chat_with_openai, handle_step_chat
+- **Details**: The system uses OpenAI's GPT model to provide AI-driven feedback and step-by-step guidance in steps, particularly implemented in step-specific interactions.
+
+(Introduction to 12 Steps)
+————————————————————————
+(Implemented)
+- **File Name**: frontend/src/components/StepworkPage.js
+- **Function Name**: StepworkPage component
+- **Details**: This component organizes and displays a series of twelve steps, providing interactive content presumably relating to an introduction to these steps.
+
+(Create Step 11 Nightly Review)
+————————————————————————
+(Implemented)
+- **File Name**: backend/daily_review.py
+- **Function Name**: nightly_review
+- **Details**: Uses existing implementation details in the nightly_inventory function which likely need expansion to specifically address the nuances of a "Step 11" review in the context of this user story.
+
+(Create Step 10 Spot-Check)
+————————————————————————
+(Implemented)
+- **File Name**: backend/definitions.py
+- **Function Names**: get_defects, get_strengths
+- **Details**: While not specifically about spot-checks, these functions identify personal traits that could be monitored or checked as part of a "Step 10" process.
+
+(Step 4 and 5 Inventories)
+————————————————————————
+(Implemented)
+- **File Name**: backend/inventory.py
+- **Function Name**: create_inventory, analyze_inventory
+- **Details**: These functions are used for creating and analyzing inventories, which involve steps 4 and 5 focused on resentments and fears.
+
+(User Onboarding and Authentication)
+————————————————————————
+(NOT IMPLEMENTED)
+- **Details**: There are no specific details within the provided code that directly implement or handle user onboarding and authentication processes aside from general user profile management.
+
+(Create Soul Signature Test)
+————————————————————————
+(NOT IMPLEMENTED)
+- **Details**: No specific implementation related to a "Soul Signature Test" is present in the provided repository summary. This suggests a gap between the user story and the current state of the application's code base.
