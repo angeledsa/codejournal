@@ -1,5 +1,8 @@
 import os
 from openai import OpenAI
+
+client = OpenAI()
+from openai import OpenAI
 import logging
 import requests
 from requests.auth import HTTPBasicAuth
@@ -23,7 +26,7 @@ def understand_code_chunked(code_snippet):
     logger.debug("Calling OpenAI API to understand code in chunks...")
     chunk_size = 4096  # Ensure chunks are small enough to fit within max tokens limit
     chunks = [code_snippet[i:i + chunk_size] for i in range(0, len(code_snippet), chunk_size)]
-    
+
     explanations = []
     for chunk in chunks:
         response = client.chat.completions.create(
@@ -38,7 +41,7 @@ def quick_understand_code_chunked(code_snippet):
     logger.debug("Calling OpenAI API to quickly understand code in chunks...")
     chunk_size = 4096  # Ensure chunks are small enough to fit within max tokens limit
     chunks = [code_snippet[i:i + chunk_size] for i in range(0, len(code_snippet), chunk_size)]
-    
+
     explanations = []
     for chunk in chunks:
         response = client.chat.completions.create(
@@ -54,45 +57,45 @@ def fetch_jira_issues(jira_url, jira_project_key, jira_user, jira_api_token):
     headers = {
         "Accept": "application/json"
     }
-    
+
     issues_url = f"{jira_url}/rest/api/2/search?jql=project={jira_project_key}"
     response = requests.get(issues_url, headers=headers, auth=auth)
-    
+
     if response.status_code != 200:
         logger.error(f"Failed to fetch JIRA issues: {response.status_code} {response.text}")
         return None
-    
+
     issues = response.json().get('issues', [])
     jira_issues = []
-    
+
     for issue in issues:
         project = issue['fields']['project']['name']
         epic = issue['fields'].get('epic', {}).get('name', 'No Epic')
         story = issue['fields']['summary']
         acceptance_criteria = issue['fields'].get('customfield_10014', 'No Acceptance Criteria')  # Change 'customfield_10014' to your actual field ID
-        
+
         jira_issues.append({
             "project": project,
             "epic": epic,
             "story": story,
             "acceptance_criteria": acceptance_criteria
         })
-    
+
     return jira_issues
 
 def summarize_jira_issues(jira_issues):
     logger.debug("Calling OpenAI API to summarize JIRA issues...")
 
     summaries = []
-    
+
     def summarize_issue(issue):
         project = issue['project']
         epic = issue['epic']
         story = issue['story']
         acceptance_criteria = issue['acceptance_criteria']
-        
+
         prompt = f"Project: {project}\nEpic: {epic}\nStory/Task: {story}\nAcceptance Criteria: {acceptance_criteria}\n\nProvide user story/task improvement suggestions:"
-        
+
         response = client.chat.completions.create(
             model="gpt-4-turbo",
             messages=[{"role": "user", "content": prompt}],
@@ -104,7 +107,7 @@ def summarize_jira_issues(jira_issues):
 
     with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_issue = {executor.submit(summarize_issue, issue): issue for issue in jira_issues}
-        
+
         for future in as_completed(future_to_issue):
             summaries.append(future.result())
 
@@ -122,7 +125,7 @@ def extract_readme_context(repo_data):
 def compare_summaries(jira_summary_file, repo_summary_file):
     with open(jira_summary_file, 'r') as jira_file:
         jira_summary = jira_file.read()
-    
+
     with open(repo_summary_file, 'r') as repo_file:
         repo_summary = repo_file.read()
 
@@ -148,5 +151,26 @@ def compare_summaries(jira_summary_file, repo_summary_file):
         messages=[{"role": "user", "content": prompt}],
         max_tokens=4096
     )
-    
+
     return response.choices[0].message.content.strip()
+
+def generate_end_user_documentation(quick_repo_summary_path, comparison_result_path, output_path):
+    logger.debug("Generating end-user documentation...")
+
+    with open(quick_repo_summary_path, 'r') as qrs_file, open(comparison_result_path, 'r') as cr_file:
+        quick_repo_summary = qrs_file.read()
+        comparison_result = cr_file.read()
+
+        prompt = f"Based on the following code summary and context, generate end-user, non-technical documentation:\n\nCode Summary:\n{quick_repo_summary}\n\nContext:\n{comparison_result}"
+
+        response = client.chat.completions.create(model="gpt-4-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=4096)
+
+        end_user_documentation = response.choices[0].message.content.strip()
+
+        with open(output_path, 'w') as output_file:
+            output_file.write(end_user_documentation)
+
+    logger.debug(f"End-user documentation written to {output_path}")
+    return output_path

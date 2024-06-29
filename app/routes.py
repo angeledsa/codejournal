@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from .github_integration import fetch_github_repo_contents
-from .code_analysis import parse_codebase, quick_understand_code_chunked, fetch_jira_issues, summarize_jira_issues, compare_summaries
+from .code_analysis import parse_codebase, quick_understand_code_chunked, fetch_jira_issues, summarize_jira_issues, compare_summaries, generate_end_user_documentation
 import logging
 from openai import OpenAI
 import os
@@ -97,3 +97,18 @@ def compare_summaries_route():
     except Exception as e:
         logger.error(f"Error comparing summaries: {e}")
         return jsonify({'error': str(e)}), 500
+    
+@bp.route('/generate_end_user_documentation', methods=['POST'])
+def generate_end_user_docs():
+    quick_repo_summary_path = request.json['quick_repo_summary_path']
+    comparison_result_path = request.json['comparison_result_path']
+    output_path = request.json.get('output_path', 'end_user_documentation.txt')
+    
+    logger.debug("Received request to generate end-user documentation")
+    
+    try:
+        output_file = generate_end_user_documentation(quick_repo_summary_path, comparison_result_path, output_path)
+        return jsonify({'message': 'End-user documentation generated.', 'output_file': output_file})
+    except Exception as e:
+        logger.error(f"Error generating end-user documentation: {e}")
+        return jsonify({'error': 'Failed to generate end-user documentation.'}), 500
